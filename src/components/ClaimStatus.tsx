@@ -12,6 +12,12 @@ export default function ClaimStatus() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [emiMonths, setEmiMonths] = useState(12);
+
+  const interestRatePerMonth = 0.025; // 2.5% per month
+  const totalInterest = claim ? Math.round(claim.amount * interestRatePerMonth * emiMonths) : 0;
+  const monthlyEMI = claim ? Math.round((claim.amount + totalInterest) / emiMonths) : 0;
+
   useEffect(() => {
     if (!id) return;
     const fetchStatus = () => {
@@ -157,6 +163,49 @@ export default function ClaimStatus() {
                   </div>
                 )}
               </div>
+
+              {/* EMI Calculator Widget */}
+              {(claim.status === "Approved" || claim.status === "Paid" || claim.status === "Payment Processing" || claim.status === "Pending Verification" || claim.status === "Unclaimed") && (
+                <div className="mt-6 p-6 border-t border-slate-100 bg-slate-50">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Receipt className="w-5 h-5 text-indigo-600" />
+                    <h3 className="font-bold text-slate-900">Loan EMI Calculator</h3>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                        <label>Repayment Duration</label>
+                        <span>{emiMonths} Months</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="3" 
+                        max="24" 
+                        step="3"
+                        value={emiMonths}
+                        onChange={(e) => setEmiMonths(Number(e.target.value))}
+                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                      />
+                      <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                        <span>3 Mos</span>
+                        <span>24 Mos</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-white border border-slate-200 rounded-xl">
+                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Monthly EMI</p>
+                        <p className="text-lg font-bold text-indigo-600">Rs. {monthlyEMI.toLocaleString()}</p>
+                      </div>
+                      <div className="p-3 bg-white border border-slate-200 rounded-xl">
+                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">Total Interest (2.5%/mo)</p>
+                        <p className="text-lg font-bold text-slate-800">Rs. {totalInterest.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
         </div>

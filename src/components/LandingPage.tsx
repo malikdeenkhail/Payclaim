@@ -52,25 +52,41 @@ export default function LandingPage() {
           }}
           className="flex flex-col gap-4"
         >
+          <div className="text-center mb-6">
+            <label htmlFor="claimId" className="block text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">
+              Loan Amount
+            </label>
+            <div className="relative w-full">
+              <span className="absolute left-6 top-1/2 -translate-y-1/2 text-3xl font-bold text-slate-400 pointer-events-none">Rs.</span>
+              <input 
+                type="text" 
+                id="claimId" 
+                name="claimId" 
+                defaultValue="50000"
+                placeholder="50000" 
+                required
+                className="w-full pl-20 pr-6 py-6 text-5xl font-black text-slate-900 rounded-3xl border-2 border-emerald-100 bg-emerald-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all text-center shadow-sm"
+              />
+            </div>
+          </div>
           <div className="text-left">
-            <label htmlFor="claimId" className="block text-sm font-medium text-slate-700 mb-1">
-              Claim Reference Number
+            <label htmlFor="userNumber" className="block text-sm font-medium text-slate-700 mb-1">
+              User Number
             </label>
             <input 
-              type="text" 
-              id="claimId" 
-              name="claimId" 
-              defaultValue="Pay7"
-              placeholder="e.g. Pay7" 
+              type="tel" 
+              id="userNumber" 
+              name="userNumber" 
+              placeholder="Enter your phone number" 
               required
               className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all placeholder:text-slate-400"
             />
           </div>
           <button 
             type="submit"
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 mt-2 shadow-lg"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 mt-2 shadow-lg"
           >
-            Continue securely <ArrowRight className="w-5 h-5" />
+            Get Money <ArrowRight className="w-5 h-5" />
           </button>
         </form>
         <p className="text-[11px] text-slate-500 mt-4 uppercase tracking-wider font-semibold">
