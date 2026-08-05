@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Plus, ShieldAlert, CheckCircle2, Clock, XCircle, Search, RefreshCw, LogOut, Users, FileText, Download, Shield, UserX, UserCheck } from "lucide-react";
+import { Plus, ShieldAlert, CheckCircle2, Clock, XCircle, Search, RefreshCw, LogOut, Users, FileText, Download, Shield, UserX, UserCheck, ClipboardCheck } from "lucide-react";
 import type { PaymentClaim, ClaimStatus } from "../types";
 
 // Mock Data for new tabs
+const mockApplications = [
+  { id: "APP-1001", applicantName: "Ahmed Khan", cnic: "35202-1234567-1", requestedAmount: 50000, creditScore: 720, status: "Pending", assignedLimit: 0 },
+  { id: "APP-1002", applicantName: "Fatima Ali", cnic: "35202-7654321-2", requestedAmount: 15000, creditScore: 610, status: "Pending", assignedLimit: 0 },
+  { id: "APP-1003", applicantName: "Usman Tariq", cnic: "35202-9998887-3", requestedAmount: 100000, creditScore: 850, status: "Approved", assignedLimit: 80000 },
+];
+
 const mockAuditLogs = [
   { id: 1, action: "Admin login successful", user: "admin@payclaim.pk", time: new Date().toISOString(), ip: "192.168.1.55" },
   { id: 2, action: "Claim Pay7 status updated to Approved", user: "admin@payclaim.pk", time: new Date(Date.now() - 3600000).toISOString(), ip: "192.168.1.55" },
@@ -23,7 +29,17 @@ export default function AdminDashboard() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
-  const [activeTab, setActiveTab] = useState<"claims" | "logs" | "users" | "export">("claims");
+  const [activeTab, setActiveTab] = useState<"claims" | "applications" | "logs" | "users" | "export">("claims");
+
+  const [applications, setApplications] = useState(mockApplications);
+  
+  const handleUpdateLimit = (id: string, newLimit: number) => {
+    setApplications(apps => apps.map(app => 
+      app.id === id 
+        ? { ...app, assignedLimit: newLimit, status: newLimit > 0 ? "Approved" : "Rejected" } 
+        : app
+    ));
+  };
 
   const [claims, setClaims] = useState<PaymentClaim[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +76,7 @@ export default function AdminDashboard() {
       setIsAuthenticated(true);
       setLoginError("");
     } else {
-      setLoginError("Invalid credentials. Use admin / Alee772002@");
+      setLoginError("Invalid credentials. Please try again.");
     }
   };
 
@@ -152,7 +168,7 @@ export default function AdminDashboard() {
                 value={loginEmail}
                 onChange={e => setLoginEmail(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
-                placeholder="admin"
+                placeholder="Enter username"
               />
             </div>
             <div>
@@ -162,7 +178,7 @@ export default function AdminDashboard() {
                 value={loginPassword}
                 onChange={e => setLoginPassword(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
-                placeholder="admin"
+                placeholder="••••••••"
               />
             </div>
             <button type="submit" className="w-full py-4 mt-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-all shadow-lg active:scale-95">
@@ -195,6 +211,12 @@ export default function AdminDashboard() {
             className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${activeTab === 'claims' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
           >
             <FileText className="w-5 h-5" /> Claims Management
+          </button>
+          <button 
+            onClick={() => setActiveTab("applications")}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-colors whitespace-nowrap ${activeTab === 'applications' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            <ClipboardCheck className="w-5 h-5" /> Loan Applications
           </button>
           <button 
             onClick={() => setActiveTab("logs")}
@@ -341,6 +363,64 @@ export default function AdminDashboard() {
                 </table>
               </div>
             </div>
+          </motion.div>
+        )}
+
+        {activeTab === "applications" && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+             <h2 className="text-xl font-bold text-slate-900 mb-6">Review Loan Applications</h2>
+             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <table className="w-full text-left text-sm whitespace-nowrap">
+                  <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                    <tr>
+                      <th className="px-6 py-4">App ID</th>
+                      <th className="px-6 py-4">Applicant</th>
+                      <th className="px-6 py-4">Requested</th>
+                      <th className="px-6 py-4">Credit Score</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Set Loan Limit (PKR)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {applications.map(app => (
+                      <tr key={app.id} className="hover:bg-slate-50/50">
+                        <td className="px-6 py-4 font-mono font-medium text-slate-900">{app.id}</td>
+                        <td className="px-6 py-4">
+                          <div className="font-medium text-slate-900">{app.applicantName}</div>
+                          <div className="text-slate-500 text-xs mt-0.5">{app.cnic}</div>
+                        </td>
+                        <td className="px-6 py-4 font-bold text-slate-900">Rs. {app.requestedAmount.toLocaleString()}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded-md text-xs font-bold ${app.creditScore >= 700 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                            {app.creditScore}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${app.status === 'Approved' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-slate-100 text-slate-800 border-slate-200'}`}>
+                            {app.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 flex items-center gap-2">
+                          <input 
+                            type="number" 
+                            className="w-24 text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+                            defaultValue={app.assignedLimit}
+                            onBlur={(e) => handleUpdateLimit(app.id, Number(e.target.value))}
+                          />
+                          <span className="text-xs text-slate-400 font-medium">PKR</span>
+                        </td>
+                      </tr>
+                    ))}
+                    {applications.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                          No applications found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+             </div>
           </motion.div>
         )}
 
