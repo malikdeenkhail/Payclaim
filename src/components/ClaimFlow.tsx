@@ -16,6 +16,7 @@ export default function ClaimFlow() {
   const [step, setStep] = useState<"location" | "identity" | "details" | "verifying">("location");
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("JazzCash");
   const [fullName, setFullName] = useState("");
@@ -204,7 +205,13 @@ export default function ClaimFlow() {
         </div>
 
         {/* Active Step Content */}
-        <div className="flex-1 px-6 md:px-12 py-4">
+        <div className="flex-1 px-6 md:px-12 py-4 relative">
+          {showToast && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="absolute top-0 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-2.5 rounded-full text-sm font-medium shadow-lg z-50 flex items-center gap-2 border border-slate-700">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              Documents uploaded successfully
+            </motion.div>
+          )}
           <div className="max-w-md mx-auto">
             {step === "location" && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="text-center pb-8">
@@ -259,7 +266,13 @@ export default function ClaimFlow() {
                   </div>
 
                   <button 
-                    onClick={() => setStep("details")}
+                    onClick={() => {
+                      setShowToast(true);
+                      setTimeout(() => {
+                        setShowToast(false);
+                        setStep("details");
+                      }, 1500);
+                    }}
                     className="w-full py-4 mt-4 bg-slate-900 text-white rounded-xl font-bold shadow-lg hover:shadow-slate-200 active:scale-95 transition-all"
                   >
                     Continue to Payment Details
