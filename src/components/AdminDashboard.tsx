@@ -56,11 +56,11 @@ export default function AdminDashboard() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginEmail === "admin" && loginPassword === "admin") {
+    if (loginEmail === "admin" && loginPassword === "Alee772002@") {
       setIsAuthenticated(true);
       setLoginError("");
     } else {
-      setLoginError("Invalid credentials. Use admin/admin for demo.");
+      setLoginError("Invalid credentials. Use admin / Alee772002@");
     }
   };
 
