@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router";
 import { motion } from "motion/react";
-import { MapPin, ShieldAlert, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { MapPin, ShieldAlert, CheckCircle2, AlertCircle, Loader2, Clock, Camera, X } from "lucide-react";
 import type { PaymentClaim, PaymentMethod } from "../types";
 
 export default function ClaimFlow() {
@@ -17,10 +17,60 @@ export default function ClaimFlow() {
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Camera states
+  const [activeCamera, setActiveCamera] = useState<"front" | "back" | "selfie" | null>(null);
+  const [capturedImages, setCapturedImages] = useState({ front: "", back: "", selfie: "" });
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("JazzCash");
   const [fullName, setFullName] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
+
+  const [timeOnPage, setTimeOnPage] = useState(0);
+  const [showSessionWarning, setShowSessionWarning] = useState(false);
+  const [gracePeriodLeft, setGracePeriodLeft] = useState(60);
+
+  useEffect(() => {
+    if (loading || error || !claim || step === "verifying") return;
+
+    const interval = setInterval(() => {
+      setTimeOnPage(prev => {
+        const newTime = prev + 1;
+        if (newTime >= 300 && !showSessionWarning) {
+          setShowSessionWarning(true);
+        }
+        return newTime;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [loading, error, claim, step, showSessionWarning]);
+
+  useEffect(() => {
+    if (showSessionWarning) {
+      const interval = setInterval(() => {
+        setGracePeriodLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            navigate("/"); // Auto-logout
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [showSessionWarning, navigate]);
+
+  const extendSession = () => {
+    setShowSessionWarning(false);
+    setTimeOnPage(0);
+    setGracePeriodLeft(60);
+  };
 
   useEffect(() => {
     if (!claimId) {
@@ -64,6 +114,58 @@ export default function ClaimFlow() {
       }
     );
   };
+
+  const startCamera = async (type: "front" | "back" | "selfie") => {
+    setActiveCamera(type);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: type === "selfie" ? "user" : "environment" }
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error("Camera access denied:", err);
+      alert("Camera access is required for identity verification.");
+      setActiveCamera(null);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setActiveCamera(null);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && activeCamera) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // If selfie, mirror the image horizontally so it acts like a mirror
+        if (activeCamera === 'selfie') {
+           ctx.translate(canvas.width, 0);
+           ctx.scale(-1, 1);
+        }
+        ctx.drawImage(videoRef.current, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        setCapturedImages(prev => ({ ...prev, [activeCamera]: dataUrl }));
+      }
+      stopCamera();
+    }
+  };
+
+  // Cleanup camera on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +216,35 @@ export default function ClaimFlow() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 w-full max-w-5xl mx-auto">
+    <>
+      {showSessionWarning && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl p-6 md:p-8 max-w-sm w-full shadow-2xl">
+            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-4 mx-auto">
+              <Clock className="w-6 h-6 text-amber-600" />
+            </div>
+            <h3 className="text-xl font-bold text-center text-slate-900 mb-2">Session Expiring</h3>
+            <p className="text-center text-sm text-slate-500 mb-6">
+              For your security, your session will automatically end in <span className="font-bold text-amber-600">{gracePeriodLeft} seconds</span>. Would you like to extend your session?
+            </p>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={extendSession}
+                className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors"
+              >
+                Yes, keep me logged in
+              </button>
+              <button 
+                onClick={() => navigate("/")}
+                className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+              >
+                Log out now
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+      <div className="flex flex-col md:flex-row gap-6 w-full max-w-5xl mx-auto">
       {/* Left Column: Claim Summary Card */}
       <aside className="w-full md:w-1/3 flex flex-col gap-4">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
@@ -249,35 +379,99 @@ export default function ClaimFlow() {
                   <p className="text-sm text-slate-500">Please provide clear photos of your CNIC and a live selfie to verify your identity.</p>
                 </div>
                 
-                <div className="flex flex-col gap-5">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">CNIC Front</label>
-                      <input type="file" accept="image/*" capture="environment" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">CNIC Back</label>
-                      <input type="file" accept="image/*" capture="environment" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Live Photo (Selfie)</label>
-                      <input type="file" accept="image/*" capture="user" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
+                {activeCamera ? (
+                  <div className="flex flex-col gap-4 items-center bg-slate-900 rounded-2xl p-4 overflow-hidden relative shadow-lg">
+                    <video ref={videoRef} autoPlay playsInline className="w-full rounded-xl bg-black max-h-[400px] object-cover" />
+                    <button 
+                      onClick={capturePhoto} 
+                      className="w-16 h-16 bg-emerald-500 rounded-full border-4 border-white shadow-xl absolute bottom-6 hover:bg-emerald-400 hover:scale-105 active:scale-95 transition-all"
+                    />
+                    <button 
+                      onClick={stopCamera} 
+                      className="w-10 h-10 bg-black/50 text-white rounded-full absolute top-6 right-6 flex items-center justify-center hover:bg-black/70 backdrop-blur-sm transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                    <div className="absolute top-6 left-6 px-3 py-1.5 bg-black/50 backdrop-blur-sm rounded-lg">
+                      <p className="text-white text-xs font-bold uppercase tracking-wider">
+                        {activeCamera === 'front' ? 'Scan CNIC Front' : activeCamera === 'back' ? 'Scan CNIC Back' : 'Take Selfie'}
+                      </p>
                     </div>
                   </div>
+                ) : (
+                  <div className="flex flex-col gap-5">
+                    <div className="space-y-4">
+                      {(['front', 'back', 'selfie'] as const).map((type) => (
+                        <div key={type} className="border border-slate-200 p-4 rounded-xl flex items-center justify-between bg-white shadow-sm hover:border-slate-300 transition-colors">
+                           <div>
+                             <p className="font-bold text-slate-800 capitalize">
+                               {type === 'front' ? 'CNIC Front' : type === 'back' ? 'CNIC Back' : 'Live Selfie'}
+                             </p>
+                             <p className={`text-[11px] font-semibold uppercase tracking-wider mt-0.5 ${capturedImages[type] ? 'text-emerald-600' : 'text-slate-400'}`}>
+                               {capturedImages[type] ? 'Captured' : 'Required'}
+                             </p>
+                           </div>
+                           {capturedImages[type] ? (
+                             <img 
+                               src={capturedImages[type]} 
+                               alt={type} 
+                               className="w-14 h-14 object-cover rounded-lg border border-slate-200 shadow-sm cursor-pointer hover:opacity-80 transition-opacity" 
+                               onClick={() => startCamera(type)} 
+                             />
+                           ) : (
+                             <button 
+                               onClick={() => startCamera(type)} 
+                               className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 text-slate-600 transition-colors shadow-sm border border-slate-200"
+                             >
+                               <Camera className="w-5 h-5" />
+                             </button>
+                           )}
+                        </div>
+                      ))}
+                    </div>
 
-                  <button 
-                    onClick={() => {
-                      setShowToast(true);
-                      setTimeout(() => {
-                        setShowToast(false);
-                        setStep("details");
-                      }, 1500);
-                    }}
-                    className="w-full py-4 mt-4 bg-slate-900 text-white rounded-xl font-bold shadow-lg hover:shadow-slate-200 active:scale-95 transition-all"
-                  >
-                    Continue to Payment Details
-                  </button>
-                </div>
+                    <button 
+                      disabled={isUploading || !capturedImages.front || !capturedImages.back || !capturedImages.selfie}
+                      onClick={() => {
+                        setIsUploading(true);
+                        setUploadProgress(0);
+                        const interval = setInterval(() => {
+                          setUploadProgress(prev => {
+                            if (prev >= 100) {
+                              clearInterval(interval);
+                              setTimeout(() => {
+                                setIsUploading(false);
+                                setShowToast(true);
+                                setTimeout(() => {
+                                  setShowToast(false);
+                                  setStep("details");
+                                }, 1500);
+                              }, 300);
+                              return 100;
+                            }
+                            return prev + 10;
+                          });
+                        }, 200);
+                      }}
+                      className={`w-full py-4 mt-4 text-white rounded-xl font-bold transition-all relative overflow-hidden ${isUploading || !capturedImages.front || !capturedImages.back || !capturedImages.selfie ? 'bg-slate-300 cursor-not-allowed' : 'bg-slate-900 shadow-lg hover:shadow-slate-200 active:scale-95'}`}
+                    >
+                      <div 
+                        className="absolute top-0 left-0 h-full bg-emerald-600 transition-all duration-200 ease-linear z-0"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                      <span className="relative z-10 flex items-center justify-center gap-2">
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Uploading Documents {uploadProgress}%
+                          </>
+                        ) : (
+                          "Continue to Payment Details"
+                        )}
+                      </span>
+                    </button>
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -406,5 +600,6 @@ export default function ClaimFlow() {
         </div>
       </section>
     </div>
+    </>
   );
 }

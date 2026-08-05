@@ -1,0 +1,17 @@
+{
+  "name": "PayClaim PK",
+  "short_name": "PayClaim",
+  "description": "Secure Payment Claim & Verification Service",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#059669",
+  "icons": [
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Check_green_circle.svg/512px-Check_green_circle.svg.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
