@@ -1,0 +1,6 @@
+{
+  "name": "PayClaim PK",
+  "description": "Secure Payment Claim & Verification Service for Pakistan",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
